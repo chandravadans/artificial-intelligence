@@ -1,3 +1,5 @@
 .idea/
 .pyc
 .zip
+/*.zip
+/8puzzle/puzzle00.txt
