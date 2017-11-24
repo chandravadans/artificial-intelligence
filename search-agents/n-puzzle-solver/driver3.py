@@ -17,11 +17,11 @@ class State(object):
         return str(self.tiles)
 
     def move_up(self):
-        print "Moved up, now the board state is %s" % str(self.tiles)
+        print("Moved up, now the board state is %s" % str(self.tiles))
         return self.tiles
 
     def move_down(self):
-        print "Moved down, now the board state is %s" % str(self.tiles)
+        print("Moved down, now the board state is %s" % str(self.tiles))
         return self.tiles
 
     def move_left(self):
