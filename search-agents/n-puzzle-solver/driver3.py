@@ -35,5 +35,5 @@ class State(object):
 
 if __name__ == '__main__':
     arguments = sys.argv
-    initial_board_state = State(str(arguments[2]).split(","))
+    initial_board_state = State(str(arguments[1]).split(","))
     initial_board_state.dimensions = 3
