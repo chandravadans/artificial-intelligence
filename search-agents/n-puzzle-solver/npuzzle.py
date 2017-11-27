@@ -323,7 +323,8 @@ if __name__ == '__main__':
         solver = BfsSolver(initial_board_state)
     stats = solver.solve()
     ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    print(
+    op = open("output.txt", "w+")
+    op.write(
         "path_to_goal: " + str(stats["path"]) +
         "\ncost_of_path: " + str(stats["cost_of_path"]) +
         "\nnodes_expanded: " + str(stats["nodes_expanded"]) +
@@ -332,3 +333,4 @@ if __name__ == '__main__':
         "\nrunning_time: " + str(stats["time"]) +
         "\nmax_ram_usage: " + str(ram_usage)
     )
+    op.close()
