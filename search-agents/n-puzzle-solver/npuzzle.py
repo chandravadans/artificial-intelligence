@@ -167,21 +167,26 @@ class State:
         return children
 
 
-class BfsSolver:
+class UninformedSearchSolver:
     """
-    Uses the BFS algo to solve a given n-puzzle board
+    Uses the BFS/DFS algo to solve a given n-puzzle board
     """
     initial_state = None
+    algo = ""
 
-    # The frontier in BFS is actually used as a queue
+    # The frontier in BFS/DFS is actually used as a queue/stack.
+    # Frontier set made to test membership in O(1)
     frontier = dq()
+    frontier_set = set()
 
     # All of the fully explored states in this set
     explored = set()
 
-    def __init__(self, initial_state=None):
+    def __init__(self, algo, initial_state=None):
         self.initial_state = initial_state
         self.frontier.append(initial_state)
+        self.frontier_set.add(initial_state)
+        self.algo = algo
 
     def solve(self):
         """
@@ -191,7 +196,13 @@ class BfsSolver:
         start_time = time.time()
         maxdepth = 0
         while(len(self.frontier) != 0):
-            current_state = self.frontier.popleft()
+            if self.algo == "bfs":
+                # Pop the leftmost element if doing a bfs (Queue)
+                current_state = self.frontier.popleft()
+            else:
+                # Pop the rightmost element if doing a dfs (Stack)
+                current_state = self.frontier.pop()
+            self.frontier_set.remove(current_state)
             if (self.isFinalState(current_state)):
                 soln = self.get_solution_moves(current_state)
                 end_time = time.time()
@@ -204,85 +215,15 @@ class BfsSolver:
                 stats["path"] = soln
                 return stats
             neighbors = current_state.generate_possible_states()
+            if self.algo == "dfs":
+                neighbors.reverse()
+
             for neighbor in neighbors:
-                if neighbor.depth > maxdepth:
-                    maxdepth = neighbor.depth
-                if neighbor not in self.explored:
+                if neighbor not in self.explored and neighbor not in self.frontier_set:
                     self.frontier.append(neighbor)
-            self.explored.add(current_state)
-            logging.debug("Frontier size = " +
-                          str(len(self.frontier)) +
-                          "; Explored size = " +
-                          str(len(self.explored)))
-        logging.error("This is an unsolvable board!")
-        return None
-
-    def get_solution_moves(self, final_state):
-        moves = dq()
-        current_state = final_state
-        while current_state is not None:
-            if current_state.parent_move is not None:
-                moves.appendleft(current_state.parent_move)
-            current_state = current_state.parent
-        res = []
-        [res.append(move) for move in moves]
-        return res
-
-    def isFinalState(self, state):
-        internal_state = state.tiles
-        for i in range(len(internal_state) - 1):
-            if internal_state[i] != i:
-                return False
-        return True
-
-
-class DfsSolver:
-    """
-    Uses the DFS algo to solve a given n-puzzle board
-    """
-    initial_state = None
-
-    # The frontier in DFS is actually used as a stack
-    frontier = dq()
-    frontierSet = set()
-
-    # All of the fully explored states in this set
-    explored = set()
-
-    def __init__(self, initial_state=None):
-        self.initial_state = initial_state
-        self.frontier.append(initial_state)
-        self.frontierSet.add(initial_state)
-
-    def solve(self):
-        """
-        Attempts to solve an n-puzzle and returns a stats
-        dict, or None if no solution exists
-        """
-        start_time = time.time()
-        maxdepth = 0
-        while(len(self.frontier) != 0):
-            current_state = self.frontier.pop()
-            self.frontierSet.remove(current_state)
-            if (self.isFinalState(current_state)):
-                soln = self.get_solution_moves(current_state)
-                end_time = time.time()
-                stats = {}
-                stats["nodes_expanded"] = len(self.explored)
-                stats["search_depth"] = current_state.depth
-                stats["max_search_depth"] = maxdepth
-                stats["cost_of_path"] = len(soln)
-                stats["time"] = end_time - start_time
-                stats["path"] = soln
-                return stats
-            neighbors = current_state.generate_possible_states()
-            neighbors.reverse()
-            for neighbor in neighbors:
-                if neighbor.depth > maxdepth:
-                    maxdepth = neighbor.depth
-                if neighbor not in self.explored and neighbor not in self.frontierSet:
-                    self.frontier.append(neighbor)
-                    self.frontierSet.add(neighbor)
+                    self.frontier_set.add(neighbor)
+                    if neighbor.depth > maxdepth:
+                        maxdepth = neighbor.depth
             self.explored.add(current_state)
             logging.debug("Frontier size = " +
                           str(len(self.frontier)) +
@@ -316,13 +257,22 @@ if __name__ == '__main__':
     arguments = sys.argv
     initial_board_state = State([int(x) for x in str(arguments[2]).split(",")])
     if arguments[1] == "bfs":
-        solver = BfsSolver(initial_board_state)
+        solver = UninformedSearchSolver("bfs", initial_board_state)
     elif arguments[1] == "dfs":
-        solver = DfsSolver(initial_board_state)
+        solver = UninformedSearchSolver("dfs", initial_board_state)
     elif arguments[1] == "ast":
-        solver = BfsSolver(initial_board_state)
+        solver = UninformedSearchSolver("bfs", initial_board_state)
     stats = solver.solve()
     ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    print(
+        "path_to_goal: " + str(stats["path"]) +
+        "\ncost_of_path: " + str(stats["cost_of_path"]) +
+        "\nnodes_expanded: " + str(stats["nodes_expanded"]) +
+        "\nsearch_depth: " + str(stats["search_depth"]) +
+        "\nmax_search_depth: " + str(stats["max_search_depth"]) +
+        "\nrunning_time: " + str(stats["time"]) +
+        "\nmax_ram_usage: " + str(ram_usage)
+    )
     op = open("output.txt", "w+")
     op.write(
         "path_to_goal: " + str(stats["path"]) +

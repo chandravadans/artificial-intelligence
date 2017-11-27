@@ -3,3 +3,4 @@
 *.zip
 8puzzle/*
 .vscode/*
+output.txt
