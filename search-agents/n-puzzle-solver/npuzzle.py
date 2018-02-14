@@ -3,6 +3,7 @@ import math
 import logging
 import time
 from collections import deque as dq
+from queue import PriorityQueue
 import resource
 
 
@@ -20,6 +21,11 @@ class State:
     empty_col = 0
     number_of_moves = 0
     parent_move = None
+
+    # Stuff for astar
+    f = 0           # f = g + h
+    g = 0           # g, cost of reaching this state
+    h = 0           # h, heuristic value, here manhattan score
 
     def __init__(self, state_array, parent=None, depth=0):
         """
@@ -51,7 +57,7 @@ class State:
                 res = res + str(self.tiles[i * self.dimensions + j]) + " "
             res = res + "\n"
         return res
-
+    
     def __eq__(self, other):
         """
         Function overridden to make States valid candidates for insertion
@@ -62,6 +68,20 @@ class State:
 
     def __ne__(self, other):
         return (not self.__eq__(other))
+    
+    def __lt__(self, other):
+        """
+        Compares states by their manhattan scores. If there's a tie 
+        Useful in A* 
+        """
+        #self_move = self.parent_move
+        #other_move = other.parent_move
+        #move_priorities = ["Up", "Down", "Left", "Right"]
+        #if self.f != other.f:
+        return other.f >= self.f
+        #else:
+        #    move_priorities.index(other_move) > move_priorities.index(self_move)
+
 
     def move_up(self):
         """
@@ -123,7 +143,8 @@ class State:
         new_list[self.empty_row * self.dimensions +
                  self.empty_col] = existing_element
         new_state = State(new_list, self, self.depth + 1)
-        # logging.debug("\n" + str(new_state))
+        new_state.process_astar_stats()
+        logging.debug("\n" + str(new_state))
         return new_state
 
     def is_valid(self, row, col):
@@ -165,18 +186,45 @@ class State:
             children.append(right)
 
         return children
+    
+    def process_astar_stats(self):
+        """
+        Computes a stats needed for astar: f,g, and h
+        """
+        # if self.parent is not None:
+        #    self.g = self.parent.g + 1
+        self.h = self.compute_manhattan()
+        self.f = self.depth + self.h
+    
+    def compute_manhattan(self):
+        """
+        Computes manhattan heuristic for this state, the sum of manhattan
+        distances of all misplaced non empty tiles from their actual positions
+        """
+        dist = 0
+        for i in range(0,len(self.tiles)):
+            tile = self.tiles[i]
+            if tile != 0:
+                rowTile = i // self.dimensions
+                colTile = i % self.dimensions
+                correctRow = tile // self.dimensions
+                correctCol = tile % self.dimensions
+                md = abs(rowTile - correctRow) + abs(colTile - correctCol)
+                dist = dist + md
+                #logging.debug("MD of %s is %s", tile, md)
+        return dist
 
 
-class UninformedSearchSolver:
+class NPuzzleSolver:
     """
-    Uses the BFS/DFS algo to solve a given n-puzzle board
+        Uses the BFS/DFS/A* algos to solve a given n-puzzle board
     """
     initial_state = None
     algo = ""
 
-    # The frontier in BFS/DFS is actually used as a queue/stack.
+    # The frontier in BFS/DFS is a queue/stack and for A*, its a heap (PriorityQueue)
     # Frontier set made to test membership in O(1)
-    frontier = dq()
+    frontier = None
     frontier_set = set()
 
     # All of the fully explored states in this set
@@ -184,7 +232,12 @@ class UninformedSearchSolver:
 
     def __init__(self, algo, initial_state=None):
         self.initial_state = initial_state
-        self.frontier.append(initial_state)
+        if algo == "bfs" or algo == "dfs":
+            self.frontier = dq()
+            self.frontier.append(initial_state)
+        else:
+            self.frontier = PriorityQueue()
+            self.frontier.put(initial_state)
         self.frontier_set.add(initial_state)
         self.algo = algo
 
@@ -195,13 +248,18 @@ class UninformedSearchSolver:
         """
         start_time = time.time()
         maxdepth = 0
-        while(len(self.frontier) != 0):
+        break_cond = False
+
+        while(not break_cond):
             if self.algo == "bfs":
                 # Pop the leftmost element if doing a bfs (Queue)
                 current_state = self.frontier.popleft()
-            else:
+            elif self.algo == "dfs":
                 # Pop the rightmost element if doing a dfs (Stack)
                 current_state = self.frontier.pop()
+            else:
+                # Get element with highest priority if doing A* (Heap)
+                current_state = self.frontier.get()
             self.frontier_set.remove(current_state)
             if (self.isFinalState(current_state)):
                 soln = self.get_solution_moves(current_state)
@@ -220,15 +278,26 @@ class UninformedSearchSolver:
 
             for neighbor in neighbors:
                 if neighbor not in self.explored and neighbor not in self.frontier_set:
-                    self.frontier.append(neighbor)
+                    if self.algo == "bfs" or self.algo == "dfs":
+                        self.frontier.append(neighbor)
+                    else:
+                        self.frontier.put(neighbor)
                     self.frontier_set.add(neighbor)
                     if neighbor.depth > maxdepth:
                         maxdepth = neighbor.depth
             self.explored.add(current_state)
+            if self.algo == "bfs" or self.algo == "dfs":
+                frontier_sz = len(self.frontier)
+            else:
+                frontier_sz = self.frontier.qsize()
             logging.debug("Frontier size = " +
-                          str(len(self.frontier)) +
+                          str(frontier_sz) +
                           "; Explored size = " +
                           str(len(self.explored)))
+            if self.algo == "bfs" or self.algo == "dfs":
+                break_cond = len(self.frontier) == 0
+            else:
+                break_cond = self.frontier.empty()
         logging.error("This is an unsolvable board!")
         return None
 
@@ -256,12 +325,13 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(levelname)s - %(message)s')
     arguments = sys.argv
     initial_board_state = State([int(x) for x in str(arguments[2]).split(",")])
+    logging.debug("MD of initial state = %d", initial_board_state.compute_manhattan())
     if arguments[1] == "bfs":
-        solver = UninformedSearchSolver("bfs", initial_board_state)
+        solver = NPuzzleSolver("bfs", initial_board_state)
     elif arguments[1] == "dfs":
-        solver = UninformedSearchSolver("dfs", initial_board_state)
+        solver = NPuzzleSolver("dfs", initial_board_state)
     elif arguments[1] == "ast":
-        solver = UninformedSearchSolver("bfs", initial_board_state)
+        solver = NPuzzleSolver("ast", initial_board_state)
     stats = solver.solve()
     ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     print(
