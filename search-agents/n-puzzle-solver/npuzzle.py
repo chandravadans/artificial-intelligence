@@ -22,9 +22,9 @@ class State:
     number_of_moves = 0
     parent_move = None
 
-    # Stuff for astar
+    # Stats for astar
     f = 0           # f = g + h
-    g = 0           # g, cost of reaching this state
+    g = 0           # g, cost of reaching this state (Equal to the depth of the node)
     h = 0           # h, heuristic value, here manhattan score
 
     def __init__(self, state_array, parent=None, depth=0):
@@ -71,17 +71,11 @@ class State:
     
     def __lt__(self, other):
         """
-        Compares states by their manhattan scores. If there's a tie 
+        Compares states by their manhattan scores. 
         Useful in A* 
         """
-        #self_move = self.parent_move
-        #other_move = other.parent_move
-        #move_priorities = ["Up", "Down", "Left", "Right"]
-        #if self.f != other.f:
         return other.f >= self.f
-        #else:
-        #    move_priorities.index(other_move) > move_priorities.index(self_move)
-
+        
 
     def move_up(self):
         """
@@ -191,10 +185,9 @@ class State:
         """
         Computes a stats needed for astar: f,g, and h
         """
-        # if self.parent is not None:
-        #    self.g = self.parent.g + 1
+        self.g = self.depth
         self.h = self.compute_manhattan()
-        self.f = self.depth + self.h
+        self.f = self.g + self.h
     
     def compute_manhattan(self):
         """
@@ -211,7 +204,6 @@ class State:
                 correctCol = tile % self.dimensions
                 md = abs(rowTile - correctRow) + abs(colTile - correctCol)
                 dist = dist + md
-                #logging.debug("MD of %s is %s", tile, md)
         return dist
 
 
@@ -302,6 +294,9 @@ class NPuzzleSolver:
         return None
 
     def get_solution_moves(self, final_state):
+        """
+        Gets the sequence of moves from parent to this state
+        """
         moves = dq()
         current_state = final_state
         while current_state is not None:
@@ -313,6 +308,9 @@ class NPuzzleSolver:
         return res
 
     def isFinalState(self, state):
+        """
+        Checks if this is the final state (0,1,2...m^2-1)
+        """
         internal_state = state.tiles
         for i in range(len(internal_state) - 1):
             if internal_state[i] != i:
