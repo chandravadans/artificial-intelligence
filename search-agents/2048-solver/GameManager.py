@@ -1,7 +1,7 @@
-from Grid_3       import Grid
-from ComputerAI_3 import ComputerAI
-from PlayerAI_3   import PlayerAI
-from Displayer_3  import Displayer
+from Grid       import Grid
+from ComputerAI import ComputerAI
+from PlayerAI   import PlayerAI
+from Displayer  import Displayer
 from random       import randint
 import time
 
@@ -113,7 +113,7 @@ class GameManager:
         if randint(0,99) < 100 * self.probability:
             return self.possibleNewTiles[0]
         else:
-            return self.possibleNewTiles[1];
+            return self.possibleNewTiles[1]
 
     def insertRandonTile(self):
         tileValue = self.getNewTileValue()
