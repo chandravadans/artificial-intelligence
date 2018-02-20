@@ -31,9 +31,6 @@ class Displayer(BaseDisplayer):
         else:
             self.display = self.unixDisplay
 
-    def display(self, grid):
-        pass
-
     def winDisplay(self, grid):
         for i in range(grid.size):
             for j in range(grid.size):
